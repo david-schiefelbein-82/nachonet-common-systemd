@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-    <ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Tmds.DBus" Version="0.91.0" />
   </ItemGroup>
 
@@ -16,5 +16,11 @@
 
   <PropertyGroup>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\"/>
+  </ItemGroup>
+
 </Project>

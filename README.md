@@ -3,3 +3,5 @@ This package uses Tmds.DBus to talk to the systemd service to allow users to
 - stop services
 - query services
 - get events when a service is started or stopped
+
+Developed and built on debian 12 - other linux distros are untested.
