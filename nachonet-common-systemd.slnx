@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Nachonet.Common.Systemd/Nachonet.Common.Systemd.csproj" />
+  <Project Path="Nachonet.Common.Systemd.Cli/Nachonet.Common.Systemd.Cli.csproj" />
+</Solution>
