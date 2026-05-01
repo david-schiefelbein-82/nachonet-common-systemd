@@ -38,7 +38,7 @@ Developed and built on debian 12 - other linux distros are untested.
 
             await Task.Run(() =>
             {
-               // blocking methid, wrap in a task to avoid deadlock
+               // blocking method, wrap in a task to avoid deadlock
                Console.ReadLine();
             });
             stopping.Cancel();
