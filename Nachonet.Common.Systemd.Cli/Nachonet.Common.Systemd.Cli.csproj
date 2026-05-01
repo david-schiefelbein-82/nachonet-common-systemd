@@ -1,14 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
-    <ProjectReference Include="..\nachonet-common-systemd\Nachonet.Common.Systemd.csproj" />
-  </ItemGroup>
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>dbus_console_test</RootNamespace>
+    <RootNamespace>Nachonet.Common.Systemd.Cli</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Nachonet.Common.Systemd\Nachonet.Common.Systemd.csproj" />
+  </ItemGroup>
 </Project>

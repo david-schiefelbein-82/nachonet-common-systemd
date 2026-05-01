@@ -2,82 +2,119 @@ namespace Nachonet.Common.Systemd.Cli
 {
     public class ConsoleApp(SystemdServiceManager sem)
     {
-        private TaskCompletionSource _tcs = new TaskCompletionSource();
-        private Thread? _th;
+        private readonly StringComparison _ignoreCase = StringComparison.InvariantCultureIgnoreCase;
+        private readonly SystemdServiceManager _sm = sem;
 
-        private SystemdServiceManager _sm = sem;
-
-        public async Task RunAsync()
+        private SystemdService GetServiceByName(string serviceName)
         {
-            _th = new Thread(ConsoleThread);
-            _th.Start();
-            await _tcs.Task;
+            var svc = _sm.Services.FirstOrDefault(x => string.Equals(x.Name, serviceName, _ignoreCase));
+            svc ??= _sm.Services.FirstOrDefault(x => string.Equals(x.Name, serviceName + ".service", _ignoreCase));
+
+            return svc ?? throw new Exception(serviceName + " not found");
         }
 
-        private void ConsoleThread(object? obj)
+        public async Task RunAsync(CancellationToken cancellationToken = default)
         {
-            while (true)
+            await Task.Run(() =>
             {
-                Console.Write("Command: ");
-                string? cmd = Console.ReadLine();
-                if (cmd == null)
-                    break;
-                else if (cmd == "quit" || cmd == "q")
+                PrintUsage();
+                while (true)
                 {
-                    break;
-                }
-                else if (cmd.StartsWith("start "))
-                {
-                    var serviceName = cmd.Substring("start ".Length).Trim();
-                    try
-                    {
-                        var cron = _sm.Services.FirstOrDefault(x => x.Name == serviceName) ?? throw new Exception("no " + serviceName + "found");
-                        Console.WriteLine("Starting " + serviceName + "...");
-                        var startTask = cron.StartAsync();
-                        startTask.ContinueWith(tt =>
-                        {
-                             Console.WriteLine("Started " + serviceName + ".");
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine("start " + serviceName + ". " + ex.GetType().Name + ": " + ex.Message);
-                    }
-                }
-                else if (cmd.StartsWith("stop "))
-                {
-                    var serviceName = cmd.Substring("stop ".Length).Trim();
-                    try
-                    {
-                        var cron = _sm.Services.FirstOrDefault(x => x.Name == serviceName) ?? throw new Exception("no " + serviceName + "found");
-                        Console.WriteLine("Stopped " + serviceName + "...");
-                        var stoptask = cron.StopAsync();
-                        stoptask.ContinueWith(tt =>
-                        {
-                            Console.WriteLine("Stopped " + serviceName + ".");
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine("stop " + serviceName + ". " + ex.GetType().Name + ": " + ex.Message);
-                    }
-                }
-                else if (cmd.StartsWith("status "))
-                {
-                    var serviceName = cmd.Substring("status ".Length).Trim();
-                    try
-                    {
-                        var cron = _sm.Services.FirstOrDefault(x => x.Name == serviceName) ?? throw new Exception("no " + serviceName + "found");
-                        Console.WriteLine(cron.Name + ": " + cron.ActiveState + " (" + cron.SubState + ")");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine("stop " + serviceName + ". " + ex.GetType().Name + ": " + ex.Message);
-                    }
-                }
-            }
+                    string? cmd = Console.ReadLine();
+                    if (cmd == null)
+                        break;
 
-            _tcs.SetResult();
+                    else if (cmd == "quit" || cmd == "q" || cmd == "exit")
+                    {
+                        break;
+                    }
+                    else if (cmd.StartsWith("start ", _ignoreCase))
+                    {
+                        var serviceName = cmd["start ".Length..].Trim();
+                        try
+                        {
+                            var svc = GetServiceByName(serviceName);
+                            Console.WriteLine("Starting " + svc.Name + "...");
+                            var startTask = svc.StartAsync();
+                            startTask.ContinueWith(tt =>
+                            {
+                                Console.WriteLine("Started \"" + svc.Name + "\"");
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("start " + serviceName + ". " + ex.GetType().Name + ": " + ex.Message);
+                        }
+                    }
+                    else if (cmd.StartsWith("stop ", _ignoreCase))
+                    {
+                        var serviceName = cmd["stop ".Length..].Trim();
+                        try
+                        {
+                            var svc = GetServiceByName(serviceName);
+                            Console.WriteLine("Stopping " + svc.Name + "...");
+                            var stoptask = svc.StopAsync();
+                            stoptask.ContinueWith(tt =>
+                            {
+                                Console.WriteLine("Stopped \"" + svc.Name + "\"");
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("stop \"" + serviceName + "\" failed - " + ex.GetType().Name + ": " + ex.Message);
+                        }
+                    }
+                    else if (cmd.StartsWith("status ", _ignoreCase))
+                    {
+                        var serviceName = cmd["status ".Length..].Trim();
+                        try
+                        {
+                            var svc = GetServiceByName(serviceName);
+                            Console.WriteLine(svc.Name + " : " + svc.ActiveState + " (" + svc.SubState + ")");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("status \"" + serviceName + "\" failed - " + ex.GetType().Name + ": " + ex.Message);
+                        }
+                    }
+                    else if (cmd.StartsWith("list ", _ignoreCase))
+                    {
+                        var serviceName = cmd["list ".Length..].Trim();
+                        try
+                        {
+                            SystemdService[] svcList = [ .. from x in _sm.Services
+                                          where x.Name.Contains(serviceName, _ignoreCase)
+                                          select x];
+                            Console.WriteLine("list \"" + serviceName + "\" - found " + svcList.Length + " services");
+                            foreach (var svc in svcList)
+                                Console.WriteLine(svc.Name + " : " + svc.ActiveState + " (" + svc.SubState + ")");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("list \"" + serviceName + "\" failed - " + ex.GetType().Name + ": " + ex.Message);
+                        }
+                    }
+                    else if (cmd.StartsWith("help"))
+                    {
+                        PrintUsage();
+                    }
+                    else
+                    {
+                        Console.WriteLine("Unknown Command \"" + cmd + "\"");
+                    }
+                }
+            }, cancellationToken);
         }
-    }
+
+        private static void PrintUsage()
+        {
+            Console.WriteLine("Commands:");
+            Console.WriteLine("  start <service-name>  - Start a service");
+            Console.WriteLine("  stop <service-name>   - Stop a service");
+            Console.WriteLine("  status <service-name> - Get the status of a service");
+            Console.WriteLine("  list <search-term>    - List services matching the search term");
+            Console.WriteLine("  help                  - this screen");
+            Console.WriteLine("  quit|q|exit           - Exit the application");
+        }
+    }   
 }
